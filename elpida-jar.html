@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffb36b">
+<title>Elpida sammelt Leute im Jar</title>
+<style>
+  :root {
+    --bg1: #fff1d6;
+    --bg2: #ffd6c2;
+    --ink: #3b2a4a;
+    --ink-soft: #6b5a78;
+    --card: #fffaf2;
+    --accent: #ff7a59;
+    --purple: #8a5cf6;
+    --green: #2fb67c;
+    --red: #ef4b5b;
+    --gold: #ffc93c;
+    --shadow: 0 5px 0 rgba(59, 42, 74, .18);
+    --font: ui-rounded, "SF Pro Rounded", "Nunito", "Varela Round", "Segoe UI Rounded", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  body {
+    margin: 0; min-height: 100vh; min-height: 100dvh;
+    font-family: var(--font); color: var(--ink);
+    background: linear-gradient(170deg, var(--bg1), var(--bg2)) fixed;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button { font-family: inherit; touch-action: manipulation; cursor: pointer; color: var(--ink); }
+
+  #app {
+    max-width: 520px; margin: 0 auto;
+    padding: max(8px, env(safe-area-inset-top)) 12px max(16px, env(safe-area-inset-bottom));
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  #app.shake { animation: shake .45s cubic-bezier(.36,.07,.19,.97); }
+  @keyframes shake {
+    10%, 90% { transform: translate(-2px, 1px); }
+    20%, 80% { transform: translate(5px, -2px); }
+    30%, 50%, 70% { transform: translate(-8px, 2px); }
+    40%, 60% { transform: translate(8px, -1px); }
+  }
+
+  /* ---------- Kopfzeile ---------- */
+  .topbar { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px; }
+  .status { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+  .hearts { display: flex; gap: 4px; font-size: 28px; line-height: 1; }
+  .heart { color: var(--red); display: inline-block; transition: transform .2s, color .3s, opacity .3s; text-shadow: 0 2px 0 rgba(0,0,0,.12); }
+  .heart.lost { color: #c9bcc9; opacity: .55; transform: scale(.85); }
+  .heart.breaking { animation: heartBreak .6s ease; }
+  @keyframes heartBreak { 30% { transform: scale(1.5) rotate(-15deg); color: var(--red); } 60% { transform: scale(.6) rotate(10deg); } 100% { transform: scale(.85); } }
+  .level-pill { background: var(--ink); color: #fff; font-weight: 800; font-size: 14px; padding: 5px 12px; border-radius: 999px; white-space: nowrap; }
+  .level-pill.boss { background: linear-gradient(90deg, var(--purple), var(--red)); animation: pulse 1.2s infinite; }
+  @keyframes pulse { 50% { transform: scale(1.06); } }
+  .icon-btn { width: 46px; height: 46px; border-radius: 50%; border: 3px solid var(--ink); background: #fff; font-size: 21px; box-shadow: var(--shadow); padding: 0; }
+  .icon-btn:active { transform: translateY(3px); box-shadow: none; }
+
+  .jar-box { display: flex; align-items: center; gap: 6px; }
+  #jar { width: 56px; height: 84px; overflow: visible; display: block; }
+  .jar-label { font-size: 12px; font-weight: 800; line-height: 1.2; text-align: right; }
+  .jar-label b { display: block; font-size: 18px; color: var(--accent); }
+  .jar-label.bump { animation: pop .4s ease; }
+  #jarScale { transform-box: fill-box; transform-origin: 50% 100%; transition: transform .6s cubic-bezier(.3,1.6,.5,1); }
+  #jar .squish { transform-origin: 0px 0px; transition: transform .6s cubic-bezier(.3,1.6,.5,1); }
+  #jar.lost-1 .squish { transform: scale(1.08, .9); }
+  #jar.lost-2 .squish { transform: scale(1.18, .78); }
+  #jar.lost-3 .squish { transform: scale(1.3, .62); }
+  #jar .sweat { opacity: 0; transition: opacity .3s; }
+  #jar.lost-2 .sweat, #jar.lost-3 .sweat { opacity: 1; animation: drip 1s ease-in infinite; }
+  @keyframes drip { from { transform: translateY(-2px); } to { transform: translateY(6px); opacity: .2; } }
+  #jarLid { transform-box: fill-box; transform-origin: center; transition: transform 1s cubic-bezier(.2,1.6,.4,1); }
+  #jar.open #jarLid { transform: translate(-40px, 10px) rotate(-75deg); }
+  #jar.open .hopper { animation: escape 1.4s ease-out forwards, hopAround .5s ease-in-out 1.4s infinite alternate; }
+  @keyframes escape { 0% { transform: translate(0, 0); } 60% { transform: translate(0, -190px); } 100% { transform: translate(0, -150px); } }
+  @keyframes hopAround { from { transform: translate(0, -150px); } to { transform: translate(0, -168px); } }
+
+  /* ---------- Szene ---------- */
+  .scene-panel { background: #fff; border: 3px solid var(--ink); border-radius: 20px; box-shadow: var(--shadow); overflow: hidden; }
+  #scene { display: block; width: 100%; height: auto; aspect-ratio: 360 / 220; }
+  #scene text { font-family: var(--font); }
+  .caption { padding: 8px 12px; font-size: 15px; font-weight: 700; line-height: 1.3; border-top: 3px solid var(--ink); background: var(--card); min-height: 44px; }
+  .caption .who { color: var(--purple); font-weight: 900; }
+  .caption.pop { animation: fadeIn .3s ease; }
+  @keyframes fadeIn { from { opacity: .2; } to { opacity: 1; } }
+
+  #scene .st { stroke: #3b2a4a; stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+  #scene .ste { stroke: #3b2a4a; stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+  #jar .st { stroke: #3b2a4a; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+  .shout { paint-order: stroke; stroke: #fff; stroke-width: 4px; stroke-linejoin: round; }
+
+  .actor { transition: transform .45s cubic-bezier(.3,1.2,.5,1); }
+  .actor.fast { transition: transform .3s ease-in; }
+  .actor.slow { transition: transform 1s ease-in-out; }
+  .actor.instant, .actor.instant * { transition: none !important; }
+
+  /* Elpida */
+  #elp .e-cape { transform-origin: 0px -98px; animation: cape 2.4s ease-in-out infinite; }
+  @keyframes cape { 50% { transform: skewX(-7deg) scaleX(1.08); } }
+  #elp .e-arm { transform-origin: 0px -92px; transition: transform .3s; }
+  #elp.zap .e-arm { transform: rotate(40deg); }
+  #elp.slap .e-arm { animation: eSlap .55s ease; }
+  @keyframes eSlap { 0% { transform: rotate(0); } 40% { transform: rotate(115deg); } 65% { transform: rotate(-30deg); } 100% { transform: rotate(0); } }
+  #elp.hop .e-inner { animation: hop .5s ease 2; }
+  @keyframes hop { 40% { transform: translateY(-14px); } }
+
+  /* Der coole Typ */
+  #guy .g-head { transform-origin: 0px -78px; }
+  #guy.hit .g-head { animation: knock .9s ease; }
+  @keyframes knock { 20% { transform: rotate(-38deg); } 45% { transform: rotate(14deg); } 65% { transform: rotate(-6deg); } 100% { transform: rotate(0); } }
+  #guy .g-shades { transform-origin: 4px -93px; transition: transform .7s ease-out, opacity .7s; }
+  #guy.noshades .g-shades { transform: translate(-50px, -60px) rotate(-280deg); opacity: 0; }
+  #guy .g-print { opacity: 0; transition: opacity .15s; }
+  #guy.printed .g-print { opacity: .8; }
+  #guy.happy .g-body { animation: hop .5s ease 2; }
+  #guy.hoploop .g-body { animation: hop .6s ease infinite; }
+
+  /* Effekte in der Szene */
+  #scene .wob { transform-box: fill-box; transform-origin: center; animation: wob .35s ease-in-out infinite alternate; }
+  @keyframes wob { from { transform: rotate(-4deg); } to { transform: rotate(4deg) scale(1.08); } }
+  #scene .float { animation: floatUp 1.3s ease-in-out infinite alternate; }
+  @keyframes floatUp { from { transform: translateY(3px); opacity: .6; } to { transform: translateY(-8px); opacity: 1; } }
+  #scene .blink { animation: blink .6s linear infinite; }
+  @keyframes blink { 50% { opacity: .15; } }
+  #scene .popin { transform-box: fill-box; transform-origin: center; animation: popIn .4s cubic-bezier(.3,1.6,.5,1); }
+  @keyframes popIn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  #scene .spin { transform-box: fill-box; transform-origin: center; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #scene .sunspin { animation: spin 14s linear infinite; }
+  #scene .dash { animation: dashMove .8s linear infinite; }
+  @keyframes dashMove { to { stroke-dashoffset: -36; } }
+  #scene .puff { transform-box: fill-box; transform-origin: center; animation: puff .7s ease-out infinite; }
+  @keyframes puff { from { transform: scale(.6); opacity: 1; } to { transform: translateX(-12px) scale(1.3); opacity: .2; } }
+  #scene .flagwave { animation: flag .45s ease-in-out infinite alternate; }
+  @keyframes flag { to { transform: skewY(-9deg); } }
+  #scene .speed { animation: speed .6s linear infinite; }
+  @keyframes speed { from { transform: translateX(24px); } to { transform: translateX(-24px); } }
+  #scene .needle { transform-origin: 0px 0px; animation: needle .25s ease-in-out infinite alternate; }
+  @keyframes needle { from { transform: rotate(-70deg); } to { transform: rotate(15deg); } }
+  #scene.rumble #fgL > g, #scene.rumble .g-body { animation: rumble .08s linear infinite alternate; }
+  @keyframes rumble { to { transform: translate(1px, -1.5px); } }
+  #fgL { transition: transform 1s ease-in-out; }
+  #scene .slid { transition: transform .5s cubic-bezier(.3,1.5,.5,1); transform: translate(0px, -50px); }
+  #scene .slid.closed { transform: none; }
+  #scene .klatsch { transform-box: fill-box; transform-origin: center; animation: klatsch 1.1s ease forwards; }
+  @keyframes klatsch { 0% { transform: scale(0); } 20% { transform: scale(1.35); } 40% { transform: scale(1); } 80% { opacity: 1; } 100% { opacity: 0; } }
+  #scene .heartUp { animation: heartUp 1.3s ease-out forwards; }
+  @keyframes heartUp { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-46px); opacity: 0; } }
+  #scene .zapbeam { animation: blink .12s linear infinite; }
+
+  /* ---------- Karte ---------- */
+  .card { background: var(--card); border: 3px solid var(--ink); border-radius: 20px; box-shadow: var(--shadow); padding: 14px 14px 16px; }
+  .card h1 { font-size: 28px; line-height: 1.1; margin: 0 0 10px; text-align: center; }
+  .card h1 .jar-word { color: var(--accent); }
+  .card h2 { font-size: 24px; margin: 2px 0 8px; text-align: center; line-height: 1.15; }
+  .card p { font-size: 16.5px; line-height: 1.45; margin: 0 0 12px; }
+  .intro { padding-left: 22px; margin: 0 0 14px; }
+  .intro li { font-size: 16px; line-height: 1.4; margin-bottom: 5px; }
+  .center { text-align: center; }
+  .card .question { font-size: 18px; font-weight: 800; line-height: 1.35; margin: 0 0 12px; }
+  .answers { display: flex; flex-direction: column; gap: 9px; }
+  .answer {
+    display: flex; align-items: center; gap: 12px; text-align: left;
+    min-height: 58px; width: 100%; padding: 9px 13px;
+    background: #fff; border: 3px solid var(--ink); border-radius: 16px;
+    font-size: 16px; font-weight: 700; line-height: 1.3; box-shadow: var(--shadow);
+    transition: transform .08s, background .2s;
+  }
+  .answer:active:not(:disabled) { transform: translateY(4px); box-shadow: none; }
+  .answer .letter { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--gold); border: 3px solid var(--ink); font-weight: 900; font-size: 16px; }
+  .answer:disabled { cursor: default; }
+  .answer.gone { display: none; }
+  .answer.right { background: #d4f7e6; animation: pop .35s ease; }
+  .answer.right .letter { background: var(--green); color: #fff; }
+  .answer.wrong { background: #ffd9dc; animation: shakeSmall .4s ease; }
+  .answer.wrong .letter { background: var(--red); color: #fff; }
+  @keyframes shakeSmall { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+  @keyframes pop { 0% { transform: scale(.7); opacity: 0; } 70% { transform: scale(1.05); } 100% { transform: scale(1); opacity: 1; } }
+
+  .feedback { margin-top: 12px; border-radius: 16px; padding: 12px 14px 14px; border: 3px dashed var(--ink); animation: slideUp .35s ease; }
+  .feedback.ok { background: #e6fbf1; border-color: var(--green); }
+  .feedback.bad { background: #fff0f1; border-color: var(--red); }
+  .feedback .head { font-size: 21px; font-weight: 900; margin-bottom: 4px; }
+  .feedback.ok .head { color: var(--green); }
+  .feedback.bad .head { color: var(--red); }
+  @keyframes slideUp { from { transform: translateY(16px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+  .big-btn {
+    display: block; width: 100%; min-height: 58px; border: 3px solid var(--ink); border-radius: 18px;
+    background: var(--accent); color: #fff; font-size: 20px; font-weight: 900;
+    box-shadow: var(--shadow); text-shadow: 0 2px 0 rgba(0,0,0,.15);
+  }
+  .big-btn:active { transform: translateY(4px); box-shadow: none; }
+  .big-btn.green { background: var(--green); }
+  .big-btn.purple { background: var(--purple); }
+  .ghost-btn { display: block; margin: 0 auto; min-height: 48px; padding: 0 22px; border: 3px solid var(--ink); border-radius: 999px; background: #fff; font-size: 16px; font-weight: 800; box-shadow: var(--shadow); }
+  .ghost-btn:active { transform: translateY(3px); box-shadow: none; }
+  .stat { text-align: center; font-weight: 800; color: var(--ink-soft); font-size: 15px; }
+
+  #confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 40; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <div class="status">
+      <div class="hearts" id="hearts" role="img" aria-label="3 Leben"></div>
+      <div class="level-pill" id="levelPill">Start</div>
+    </div>
+    <div class="jar-box" title="Das Glas, in dem du steckst">
+      <div class="jar-label" id="jarLabel">Glas<b>100%</b></div>
+      <svg id="jar" viewBox="0 0 100 150" aria-hidden="true">
+        <g id="jarScale">
+          <path d="M20 30 h60 q6 0 6 6 v4 q8 6 8 18 v72 q0 14 -14 14 h-60 q-14 0 -14 -14 v-72 q0 -12 8 -18 v-4 q0 -6 6 -6z"
+                fill="rgba(190,235,255,.55)" stroke="#6aa9c9" stroke-width="4" />
+          <g transform="translate(50 141) scale(.66)"><g class="hopper"><g class="squish" id="jarGuy"></g></g></g>
+          <g class="sweat"><path d="M74 62 q4 6 0 8 q-4 -2 0 -8z" fill="#4cc3ff" /><path d="M26 70 q4 6 0 8 q-4 -2 0 -8z" fill="#4cc3ff" /></g>
+          <path d="M14 64 q-2 30 2 56" stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none" opacity=".8" />
+          <g id="jarLid">
+            <rect x="14" y="16" width="72" height="16" rx="5" fill="#ffc93c" stroke="#3b2a4a" stroke-width="3" />
+            <rect x="44" y="9" width="12" height="8" rx="3" fill="#ff7a59" stroke="#3b2a4a" stroke-width="2.5" />
+          </g>
+        </g>
+      </svg>
+    </div>
+    <button class="icon-btn" id="soundBtn" aria-label="Sound ausschalten" title="Sound an/aus">🔊</button>
+  </header>
+
+  <section class="scene-panel">
+    <svg id="scene" viewBox="0 0 360 220" role="img" aria-label="Szene">
+      <g id="bgL"></g>
+      <g id="guy" class="actor"></g>
+      <g id="fgL"></g>
+      <g id="propsL"></g>
+      <g id="elp" class="actor"></g>
+      <g id="elpFgL"></g>
+      <g id="fxL"></g>
+    </svg>
+    <div class="caption" id="caption" aria-live="polite"><span class="who" id="sayWho">Elpida</span>: <span id="sayText"></span></div>
+  </section>
+
+  <main class="card" id="card"></main>
+</div>
+<canvas id="confetti" aria-hidden="true"></canvas>
+
+<script>
+/*LOGIC-START*/
+const LEVELS = [
+  {
+    elpida: "Ich will nur Bahn fahren. In Frieden. Ist das zu viel verlangt?",
+    question: "Du bist in der Bahn. Elpida sitzt auch da und will einfach nur fahren. Wie hörst du Musik?",
+    answers: [
+      { pose: "loud", correct: false, text: "Ganz laut ohne Kopfhörer, damit Elpida beeindruckt ist",
+        comment: "Elpida ist beeindruckt. Allerdings nur davon, wie gut du ins Glas passen wirst." },
+      { pose: "quiet", correct: true, text: "Leise mit Kopfhörern, damit Elpida auch entspannen kann",
+        comment: "Der ganze Waggon atmet auf. Elpida schließt die Augen und genießt die Stille. Legendär." },
+      { pose: "beat", correct: false, text: "Laut mit Kopfhörern, sodass man nur schräge Töne und den Beat hört",
+        comment: "Tss-tss-tss. Elpida hört jedes Tss. Jedes. Einzelne. Tss." }
+    ]
+  },
+  {
+    elpida: "Kreisverkehr. Der Ort, an dem sich wahre Charaktere zeigen.",
+    question: "Elpida fährt in einen Kreisverkehr. Wie zeigst du als Autofahrer Dominanz?",
+    answers: [
+      { pose: "wrongway", correct: false, text: "Du fährst den Kreisverkehr falsch herum durch",
+        comment: "Mutig. Physikalisch beeindruckend. Rechtlich eine Katastrophe." },
+      { pose: "extra", correct: false, text: "Du fährst richtig herum, machst aber eine Extrarunde",
+        comment: "Eine Ehrenrunde? Hier gibt es keine Pokale. Nur ein Glas." },
+      { pose: "exit", correct: true, text: "Du fährst wie ein normaler Mensch in die richtige Richtung und verlässt ihn an der gewünschten Ausfahrt",
+        comment: "Dominanz durch Normalität! Elpida ist schwer beeindruckt. Wahre Stärke blinkt rechtzeitig." }
+    ]
+  },
+  {
+    elpida: "Ich gehe jetzt an deinem Auto vorbei. Ich höre ALLES.",
+    question: "Du stehst an der Ampel, Elpida läuft gerade am Auto vorbei. Was machst du mit dem Motor?",
+    answers: [
+      { pose: "vroom", correct: false, text: "Motor aufheulen lassen, damit es alle hören",
+        comment: "Alle haben es gehört. Vor allem Elpida. WRRROOOM, und dann: Klatsch." },
+      { pose: "calm", correct: true, text: "Einfach ruhig warten, bis es grün wird",
+        comment: "Brumm… ganz leise. Elpida schreitet majestätisch vorbei. Du bist ein Vorbild für Motoren überall." },
+      { pose: "rev", correct: false, text: "Im Leerlauf extra laut hochdrehen, damit man dich cool findet",
+        comment: "Coolness-Level: Laubbläser um 6 Uhr morgens. Elpida findet dich so cool, dass sie dich kühl lagert." }
+    ]
+  },
+  {
+    elpida: "Ich habe es eilig. Die Rolltreppe weiß das. Weißt du es auch?",
+    question: "Rolltreppe. Elpida will zügig nach oben. Wo stehst du?",
+    answers: [
+      { pose: "left", correct: false, text: "Links stehen und dabei in aller Ruhe aufs Handy schauen",
+        comment: "Du scrollst. Elpida wartet. Die Rolltreppe hat Zeit. Elpida nicht." },
+      { pose: "block", correct: false, text: "Quer stehen, mit Koffer, wie eine kleine Rolltreppen-Burg",
+        comment: "Eine Festung aus Koffer und Ego. Elpida erobert sie trotzdem. Mit der flachen Hand." },
+      { pose: "right", correct: true, text: "Rechts stehen und links Platz lassen",
+        comment: "Rechts stehen, links gehen! Elpida rauscht vorbei wie ein Superheld. Ihr Umhang flattert dankbar." }
+    ]
+  },
+];
+
+const GAME_OVER_TEXTS = [
+  { id: "exile", title: "Du wirst ausgebürgert!", text: "Elpida hat deinen Pass in Glitzerpapier gewickelt und freundlich, aber bestimmt zurückgeschickt." },
+  { id: "social", title: "Du musst ein soziales Jahr machen!", text: "Ab morgen bringst du Einkaufswagen zurück. Alle. Ein ganzes Jahr lang. Elpida kontrolliert." }
+];
+
+const RIGHT_HEADLINES = ["Richtig!", "Elpida ist stolz!", "Saubere Sache!", "Charakter +1!"];
+const WRONG_HEADLINES = ["Klatsch!", "Autsch!", "Falsch, mein Freund!", "Das Glas wird enger!"];
+const ELPIDA_RIGHT = ["Sehr gut. Ich bin stolz auf dich.", "Siehst du? Geht doch!", "Das war… vorbildlich.", "Ich nicke dir anerkennend zu."];
+const ELPIDA_WRONG = ["Das musste leider sein.", "Tut mir leid. Also… nicht wirklich.", "Nochmal. Diesmal mit Herz."];
+
+const MAX_LIVES = 3;
+
+function shuffle(arr, rng) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function pick(arr, rng) {
+  return arr[Math.floor(rng() * arr.length)];
+}
+
+// Reine Spiellogik ohne DOM, damit sie testbar ist.
+// Phasen: "question" -> "feedback" -> ("question" | "gameover" | "won")
+function createGame(rng) {
+  rng = rng || Math.random;
+  const s = { level: 0, lives: MAX_LIVES, phase: "question", answers: [], last: null, gameOver: null };
+
+  function prepareLevel() {
+    s.answers = shuffle(LEVELS[s.level].answers, rng);
+    s.phase = "question";
+    s.last = null;
+  }
+
+  function restart() {
+    s.level = 0;
+    s.lives = MAX_LIVES;
+    s.gameOver = null;
+    prepareLevel();
+  }
+
+  function answer(index) {
+    if (s.phase !== "question") return null;
+    const a = s.answers[index];
+    if (!a) return null;
+    const correct = a.correct === true;
+    if (!correct) s.lives--;
+    s.last = {
+      correct,
+      pose: a.pose,
+      comment: a.comment,
+      headline: pick(correct ? RIGHT_HEADLINES : WRONG_HEADLINES, rng),
+      elpida: pick(correct ? ELPIDA_RIGHT : ELPIDA_WRONG, rng),
+      lives: s.lives,
+      outOfLives: s.lives <= 0,
+      finished: correct && s.level === LEVELS.length - 1
+    };
+    s.phase = "feedback";
+    return s.last;
+  }
+
+  function next() {
+    if (s.phase !== "feedback") return s.phase;
+    if (s.last.outOfLives) {
+      s.phase = "gameover";
+      s.gameOver = pick(GAME_OVER_TEXTS, rng);
+    } else if (s.last.finished) {
+      s.phase = "won";
+    } else {
+      if (s.last.correct) s.level++;
+      prepareLevel(); // bei Fehler: gleiches Level, neu gemischt
+    }
+    return s.phase;
+  }
+
+  prepareLevel();
+  return { state: s, restart, answer, next, currentLevel: () => LEVELS[s.level] };
+}
+/*LOGIC-END*/
+
+/* ================== Zeichnungen ================== */
+const INK = "#3b2a4a";
+const GUY_MOUTH = {
+  smirk: "M0 -84 Q4 -83 8 -86",
+  shock: "M1.5 -85 a2.5 3 0 1 0 5 0 a2.5 3 0 1 0 -5 0",
+  happy: "M-1 -86 Q4 -80 9 -86",
+  sad: "M0 -83 Q4 -87 8 -83"
+};
+const E_FACE = {
+  happy: { mouth: "M-8 -116 Q-2 -110 4 -116", l: "M-13 -135 L-4 -135", r: "M2 -135 L11 -135" },
+  stern: { mouth: "M-8 -113 Q-2 -117 4 -113", l: "M-13 -138 L-4 -134", r: "M2 -134 L11 -138" }
+};
+
+// Der coole Typ: Füße bei (0,0), schaut nach rechts
+function guyMarkup() {
+  return `<g class="g-body">
+    <path class="st" d="M0 -40 L-11 0 M0 -40 L11 0"/>
+    <path class="st" d="M0 -78 L0 -40"/>
+    <path class="st" d="M0 -70 L-13 -56 L-5 -46"/>
+    <path d="M-7 -75 Q0 -64 7 -75" stroke="#ffc93c" stroke-width="2.5" fill="none" stroke-dasharray="2 2"/>
+    <g class="g-arm"><path class="st" d="M0 -70 L14 -58 L22 -48"/><g class="g-handProps"></g></g>
+    <g class="g-bodyProps"></g>
+    <g class="g-head">
+      <circle cx="0" cy="-92" r="13" fill="#fff" stroke="${INK}" stroke-width="3.5"/>
+      <path d="M-13 -96 Q-13 -109 0 -109 Q13 -109 13 -96 Z" fill="#ef4b5b" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M-12 -98 L-26 -95 L-12 -93 Z" fill="#ef4b5b" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>
+      <path class="g-mouth" d="${GUY_MOUTH.smirk}" stroke="${INK}" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <ellipse class="g-print" cx="8" cy="-87" rx="5" ry="4.2" fill="#ef4b5b"/>
+      <circle cx="-1" cy="-93" r="1.7" fill="${INK}"/><circle cx="9" cy="-93" r="1.7" fill="${INK}"/>
+      <g class="g-shades"><rect x="-5" y="-96" width="8" height="5.5" rx="2" fill="${INK}"/><rect x="5" y="-96" width="8" height="5.5" rx="2" fill="${INK}"/><path d="M3 -94 H5 M-5 -94 L-13 -95" stroke="${INK}" stroke-width="1.8"/></g>
+      <g class="g-headProps"></g>
+    </g>
+  </g>`;
+}
+
+// Elpida: Füße bei (0,0), schaut nach links, Schell-Arm links
+function elpMarkup() {
+  return `<g class="e-inner">
+    <path class="e-cape" d="M-12 -98 L12 -98 L34 -10 Q0 -20 -34 -10 Z" fill="#8a5cf6" stroke="${INK}" stroke-width="2"/>
+    <path class="ste" d="M0 -48 L-14 0 M0 -48 L14 0"/>
+    <path class="ste" d="M0 -106 L0 -48"/>
+    <path class="ste" d="M0 -92 L18 -76 L4 -62"/>
+    <path d="M-20 -126 Q-22 -148 0 -150 Q22 -148 20 -126 L24 -100 Q12 -106 10 -114 L-10 -114 Q-12 -106 -24 -100 Z" fill="#5b3a29"/>
+    <circle cx="0" cy="-126" r="17" fill="#fff" stroke="${INK}" stroke-width="4"/>
+    <path d="M-17 -130 Q-10 -146 6 -142 Q14 -140 18 -130 Q6 -136 -4 -134 Q-12 -133 -17 -130 Z" fill="#5b3a29"/>
+    <path d="M-12 -142 L-8 -150 L-4 -144 L0 -153 L4 -144 L8 -150 L12 -142" fill="none" stroke="#ffc93c" stroke-width="3" stroke-linejoin="round"/>
+    <path class="e-browL" d="${E_FACE.happy.l}" stroke="${INK}" stroke-width="2.5" stroke-linecap="round"/>
+    <path class="e-browR" d="${E_FACE.happy.r}" stroke="${INK}" stroke-width="2.5" stroke-linecap="round"/>
+    <circle cx="-8" cy="-126" r="2.4" fill="${INK}"/><circle cx="5" cy="-126" r="2.4" fill="${INK}"/>
+    <g fill="rgba(255,255,255,.25)" stroke="#e0a800" stroke-width="2"><circle cx="-8" cy="-126" r="5.8"/><circle cx="5" cy="-126" r="5.8"/><path d="M-2.2 -126.5 Q-1.5 -128.5 -0.8 -126.5 M-13.8 -127 L-17 -128" fill="none"/></g>
+    <circle cx="-13" cy="-118" r="2.6" fill="#ffb0a0"/><circle cx="10" cy="-118" r="2.6" fill="#ffb0a0"/>
+    <path class="e-mouth" d="${E_FACE.happy.mouth}" stroke="${INK}" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <circle cx="0" cy="-96" r="6" fill="#ffc93c" stroke="${INK}" stroke-width="2"/>
+    <text x="0" y="-92.5" text-anchor="middle" font-size="9" font-weight="900" fill="${INK}">E</text>
+    <g class="e-arm"><path class="ste" d="M0 -92 L-22 -78 L-36 -90"/><circle cx="-37" cy="-92" r="5" fill="#fff" stroke="${INK}" stroke-width="3"/></g>
+  </g>`;
+}
+
+/* --- kleine Zeichen-Helfer --- */
+const t = (x, y, txt, o) => { o = o || {};
+  return `<text x="${x}" y="${y}" font-size="${o.s || 14}" fill="${o.c || INK}" text-anchor="${o.a || "middle"}" font-weight="${o.w || 900}" class="${o.cls || ""}">${txt}</text>`; };
+const sky = c => `<rect width="360" height="220" fill="${c || "#bfe8ff"}"/>`;
+const sun = (x, y) => `<g class="sunspin" style="transform-origin:${x}px ${y}px"><path d="M${x - 28} ${y}h10M${x + 18} ${y}h10M${x} ${y - 28}v10M${x} ${y + 18}v10M${x - 20} ${y - 20}l7 7M${x + 13} ${y + 13}l7 7M${x + 20} ${y - 20}l-7 7M${x - 13} ${y + 13}l-7 7" stroke="#ffb000" stroke-width="3" stroke-linecap="round"/></g><circle cx="${x}" cy="${y}" r="14" fill="#ffd84d" stroke="#ffb000" stroke-width="2"/>`;
+const cloud = (x, y) => `<g fill="#fff" opacity=".9"><ellipse cx="${x}" cy="${y}" rx="18" ry="8"/><ellipse cx="${x + 13}" cy="${y - 6}" rx="13" ry="9"/><ellipse cx="${x + 25}" cy="${y}" rx="14" ry="7"/></g>`;
+const grass = (y, c) => `<rect y="${y}" width="360" height="${220 - y}" fill="${c || "#8fd18a"}"/>`;
+const road = y => `<rect y="${y}" width="360" height="${220 - y}" fill="#7d7d8c"/><path d="M0 ${y + 2}H360" stroke="#5f5f6e" stroke-width="4"/>`;
+const wheel = (cx, cy) => `<circle cx="${cx}" cy="${cy}" r="13" fill="${INK}"/><circle cx="${cx}" cy="${cy}" r="5" fill="#d9d4e0"/>`;
+const car = (x, y, c) => `<path d="M${x + 100} ${y} L${x + 108} ${y - 22}" stroke="#9fd6ff" stroke-width="5" stroke-linecap="round"/>
+  <rect x="${x}" y="${y}" width="130" height="36" rx="13" fill="${c}" stroke="${INK}" stroke-width="3"/>
+  <path d="M${x + 62} ${y + 5}V${y + 30}" stroke="${INK}" stroke-width="2" opacity=".35"/>
+  <circle cx="${x + 124}" cy="${y + 12}" r="4" fill="#fff3a0" stroke="${INK}" stroke-width="2"/>
+  <rect x="${x + 3}" y="${y + 9}" width="6" height="8" rx="2" fill="#ef4b5b"/>${wheel(x + 30, y + 36)}${wheel(x + 102, y + 36)}`;
+const house = (x, w, h, c) => { let win = "";
+  for (let yy = 170 - h + 10; yy < 158; yy += 18) for (let xx = x + 8; xx < x + w - 10; xx += 16)
+    win += `<rect x="${xx}" y="${yy}" width="8" height="10" rx="1.5" fill="#fff6c9" stroke="${INK}" stroke-width="1.2"/>`;
+  return `<rect x="${x}" y="${170 - h}" width="${w}" height="${h}" fill="${c}" stroke="${INK}" stroke-width="2.5"/>${win}`; };
+const zebra = (x, w, y0, y1) => { let s = ""; for (let y = y0; y < y1; y += 10) s += `<rect x="${x}" y="${y}" width="${w}" height="5" rx="1" fill="#fff"/>`; return s; };
+const JAR_PATH = "M20 30 h60 q6 0 6 6 v4 q8 6 8 18 v72 q0 14 -14 14 h-60 q-14 0 -14 -14 v-72 q0 -12 8 -18 v-4 q0 -6 6 -6z";
+const sceneJar = (cx, bottom, s, lid) => `<g transform="translate(${cx - 50 * s} ${bottom - 144 * s}) scale(${s})">
+  <path d="${JAR_PATH}" fill="rgba(190,235,255,.5)" stroke="#6aa9c9" stroke-width="3.5"/>
+  <path d="M14 64 q-2 30 2 56" stroke="#fff" stroke-width="4" stroke-linecap="round" fill="none" opacity=".8"/>
+  ${t(50, 76, "JAR", { s: 13, c: "#6aa9c9" })}
+  ${lid === "none" ? "" : `<g class="slid ${lid === "closed" ? "closed" : ""}"><rect x="14" y="16" width="72" height="16" rx="5" fill="#ffc93c" stroke="${INK}" stroke-width="3"/><rect x="44" y="9" width="12" height="8" rx="3" fill="#ff7a59" stroke="${INK}" stroke-width="2.5"/></g>`}
+</g>`;
+function sbubble(x, y, w, lines, tx, ty, o) {
+  o = o || {};
+  const lh = 12.5, h = lines.length * lh + 10, f = o.fill || "#fff", c = o.color || INK;
+  const bx = Math.max(x + 10, Math.min(x + w - 24, tx - 7));
+  return `<g class="popin"><path d="M${bx} ${y + h - 2} L${tx} ${ty} L${bx + 14} ${y + h - 2}" fill="${f}" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/>
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10" fill="${f}" stroke="${INK}" stroke-width="2.5"/>
+    <path d="M${bx + 2} ${y + h - 1.3}H${bx + 12}" stroke="${f}" stroke-width="3"/>
+    ${lines.map((l, i) => `<text x="${x + w / 2}" y="${y + 16 + i * lh}" text-anchor="middle" font-size="10.5" font-weight="800" fill="${c}">${l}</text>`).join("")}</g>`;
+}
+const cart = x => `<g stroke="${INK}" stroke-width="2.2" fill="none" stroke-linejoin="round"><path d="M${x} 158 l-6 -6"/><path d="M${x} 158 h30 l-5 24 h-21 z" fill="#d9d4e0"/><path d="M${x + 5} 166 h22 M${x + 4} 174 h21"/><path d="M${x + 4} 182 l2 8 h18 l2 -8"/><circle cx="${x + 6}" cy="194" r="4" fill="${INK}"/><circle cx="${x + 24}" cy="194" r="4" fill="${INK}"/></g>`;
+
+/* --- Requisiten am Körper (lokale Koordinaten des Typen) --- */
+const PHONE = `<rect x="18" y="-60" width="9" height="14" rx="2" fill="${INK}"/><rect x="19.5" y="-58" width="6" height="9" fill="#9fe0ff"/>`;
+const HEADPHONES = `<path d="M-14 -93 Q0 -121 14 -93" stroke="${INK}" stroke-width="3.5" fill="none"/><rect x="-18" y="-99" width="7" height="13" rx="3" fill="#8a5cf6" stroke="${INK}" stroke-width="2"/><rect x="11" y="-99" width="7" height="13" rx="3" fill="#8a5cf6" stroke="${INK}" stroke-width="2"/>`;
+const BOOMBOX = `<rect x="12" y="-62" width="34" height="20" rx="4" fill="#ff7a59" stroke="${INK}" stroke-width="2.5"/><circle cx="21" cy="-52" r="5" fill="${INK}"/><circle cx="37" cy="-52" r="5" fill="${INK}"/><path d="M18 -62v-5h22v5" stroke="${INK}" stroke-width="2.5" fill="none"/>`;
+const SUITCASE_SMALL = `<rect x="14" y="-50" width="22" height="16" rx="3" fill="#ff7a59" stroke="${INK}" stroke-width="2"/><path d="M21 -50v-4h8v4" stroke="${INK}" stroke-width="2" fill="none"/>`;
+const SUITCASE_WIDE = `<rect x="-42" y="-36" width="84" height="26" rx="5" fill="#ff7a59" stroke="${INK}" stroke-width="2.5"/><path d="M-8 -36v-6h16v6" stroke="${INK}" stroke-width="2.5" fill="none"/><path d="M-22 -34V-12M22 -34V-12" stroke="${INK}" stroke-width="1.5" opacity=".4"/>`;
+const DIZZY = `<g class="spin"><path d="M-8 -122 a8 5 0 1 1 16 0 a6 4 0 1 1 -12 0 a4 3 0 1 1 8 0" stroke="#8a5cf6" stroke-width="2.4" fill="none"/></g>`;
+
+/* --- Die Szenen --- */
+const STREET = sky() + sun(322, 34) + cloud(60, 32) + cloud(190, 22) +
+  house(0, 70, 95, "#ffb3a7") + house(70, 56, 72, "#ffd27a") + house(262, 98, 82, "#b9a7ff") +
+  `<rect y="170" width="360" height="50" fill="#d9d0c6"/><path d="M0 172H360" stroke="#b5aa9c" stroke-width="3"/>
+   <path d="M228 200V100" stroke="#5b5b6b" stroke-width="4"/><path d="M228 100q0 -10 14 -10" stroke="#5b5b6b" stroke-width="4" fill="none"/><circle cx="244" cy="92" r="6" fill="#fff3a0" stroke="${INK}" stroke-width="2"/>`;
+
+const SCN = [
+  { // Level 1: Bahn
+    label: "Bild: In der S-Bahn. Der coole Typ steht links, Elpida rechts am Sitz.",
+    bg: `<rect width="360" height="220" fill="#ffe7c2"/><rect width="360" height="18" fill="#ffcf8a"/>
+      ${t(180, 13, "S-Bahn · Richtung Gelassenheit", { s: 10, w: 800 })}
+      <rect x="14" y="28" width="332" height="74" rx="14" fill="#bfe8ff" stroke="${INK}" stroke-width="3"/>
+      <path d="M16 88 Q70 60 130 82 T250 76 T344 86 V100 H16 Z" fill="#8fd18a"/>
+      ${cloud(60, 45)}${cloud(270, 50)}
+      <g class="speed"><path d="M40 60h40M200 44h60M150 70h34M290 66h30" stroke="#fff" stroke-width="3" stroke-linecap="round"/></g>
+      <path d="M125 28V102M235 28V102" stroke="${INK}" stroke-width="3"/>
+      <rect x="250" y="142" width="96" height="16" rx="6" fill="#4cc3ff" stroke="${INK}" stroke-width="3"/>
+      <rect x="330" y="108" width="16" height="50" rx="6" fill="#4cc3ff" stroke="${INK}" stroke-width="3"/>
+      <path d="M262 158v42M336 158v42" stroke="${INK}" stroke-width="3"/>
+      <path d="M190 18V200" stroke="#a7a7b5" stroke-width="5"/>
+      <rect y="200" width="360" height="20" fill="#cdb79e"/>`,
+    guy: { x: 90, y: 200 }, elp: { x: 292, y: 200 },
+    poses: {
+      loud: { hand: PHONE, sfx: "boom", scene: `<path class="blink" d="M122 146q7 6 0 12M129 140q12 12 0 24M136 134q18 18 0 36" stroke="#ef4b5b" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <g class="float">${t(160, 124, "♫", { s: 28, c: "#8a5cf6" })}${t(52, 76, "♪", { s: 22, c: "#ff7a59" })}${t(178, 92, "♪", { s: 20, c: "#2fb67c" })}</g>
+        ${t(150, 56, "BUMM! BUMM!", { s: 22, c: "#ef4b5b", cls: "wob shout" })}` },
+      quiet: { head: HEADPHONES, sfx: "soft", scene: `<g class="float">${t(118, 96, "♪", { s: 12, c: "#2fb67c" })}</g>
+        ${t(140, 80, "(ganz leise)", { s: 11, w: 700, c: "#6b5a78" })}${t(300, 76, "ahh…", { s: 13, w: 800, c: "#8a5cf6" })}` },
+      beat: { head: HEADPHONES, sfx: "tss", scene: `<path class="blink" d="M70 102l-6-4 5-4-6-4M110 102l6-4-5-4 6-4" stroke="#ff7a59" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        ${t(150, 60, "TSS TSS TSS", { s: 19, c: "#ff7a59", cls: "wob shout" })}${t(150, 86, "BUMM-TSS!", { s: 14, c: "#8a5cf6", cls: "wob shout" })}${t(304, 76, "grrr…", { s: 13, w: 800, c: "#ef4b5b" })}` }
+    }
+  },
+  { // Level 2: Kreisverkehr
+    label: "Bild: Ein Kreisverkehr. Der coole Typ im orangen Cabrio, Elpida im lila Auto davor.",
+    bg: sky() + sun(40, 36) + cloud(110, 30) + cloud(240, 34) + grass(140) +
+      `<ellipse cx="195" cy="156" rx="78" ry="12" fill="#6cc070" stroke="#4f9a55" stroke-width="3"/>
+       <rect x="191" y="112" width="8" height="42" fill="#8a5a3c"/><circle cx="195" cy="104" r="24" fill="#4fae5a" stroke="${INK}" stroke-width="2.5"/>
+       <g fill="#ff6fb5"><circle cx="150" cy="156" r="3"/><circle cx="240" cy="154" r="3"/><circle cx="170" cy="159" r="3"/></g>` + road(165) +
+      `<path d="M346 165V68" stroke="#8a8a99" stroke-width="4"/><circle cx="346" cy="56" r="13" fill="#2b6cd6" stroke="#fff" stroke-width="2.5"/>${t(346, 62, "↺", { s: 16, c: "#fff" })}`,
+    fg: car(20, 148, "#ff7a59"), elpFg: car(212, 152, "#8a5cf6"),
+    guy: { x: 75, y: 182 }, elp: { x: 266, y: 186 },
+    poses: {
+      wrongway: { sfx: "horn", scene: `<path class="blink" d="M262 122 Q195 58 128 122" stroke="#ef4b5b" stroke-width="6" fill="none" stroke-linecap="round"/>
+        <path d="M128 122l1 -17M128 122l16 -5" stroke="#ef4b5b" stroke-width="6" stroke-linecap="round"/>
+        ${t(195, 42, "FALSCH RUM!", { s: 21, c: "#ef4b5b", cls: "wob shout" })}${t(195, 102, "⛔", { s: 22 })}` },
+      extra: { head: DIZZY, sfx: "vroom", scene: `<ellipse class="dash" cx="195" cy="140" rx="118" ry="38" fill="none" stroke="#ff7a59" stroke-width="3" stroke-dasharray="10 8"/>
+        ${t(190, 42, "Runde 2… 3… 7…", { s: 19, c: "#ff7a59", cls: "wob shout" })}` },
+      exit: { sfx: "tick", scene: `<circle class="blink" cx="146" cy="158" r="6" fill="#ffb000" stroke="${INK}" stroke-width="2"/>
+        <g class="popin"><rect x="132" y="28" width="110" height="26" rx="7" fill="#2fb67c" stroke="${INK}" stroke-width="2.5"/>${t(187, 46, "Ausfahrt 2 ✓", { s: 13, c: "#fff" })}</g>` }
+    }
+  },
+  { // Level 3: Ampel
+    label: "Bild: Eine rote Ampel. Der coole Typ im grünen Sportwagen, Elpida läuft über den Zebrastreifen.",
+    bg: sky("#c9ecff") + cloud(60, 30) + cloud(200, 20) +
+      house(10, 60, 90, "#ffb3a7") + house(80, 50, 70, "#ffd27a") + house(140, 70, 100, "#b9a7ff") + house(220, 64, 80, "#9fe0c8") +
+      road(168) + zebra(205, 80, 174, 214) +
+      `<path d="M332 200V70" stroke="#6b6b7a" stroke-width="5"/><rect x="319" y="24" width="26" height="58" rx="7" fill="${INK}"/>
+       <circle cx="332" cy="37" r="11" fill="#ef4b5b" opacity=".3"/><circle cx="332" cy="37" r="7" fill="#ef4b5b"/>
+       <circle cx="332" cy="53" r="7" fill="#5a4a3a"/><circle cx="332" cy="69" r="7" fill="#3f4a3a"/>`,
+    fg: car(20, 148, "#2fb67c") + `<path d="M24 148l-8-12h22" stroke="${INK}" stroke-width="3" fill="#2fb67c" stroke-linejoin="round"/>`,
+    guy: { x: 75, y: 182 }, elp: { x: 248, y: 205 },
+    poses: {
+      vroom: { rumble: true, sfx: "vroom", scene: `<g class="puff"><circle cx="10" cy="172" r="9" fill="#b9b9c4"/><circle cx="0" cy="160" r="12" fill="#cfcfd8"/><circle cx="14" cy="150" r="8" fill="#dcdce4"/></g>
+        ${t(130, 50, "WRRROOOM!", { s: 25, c: "#ef4b5b", cls: "wob shout" })}` },
+      rev: { rumble: true, sfx: "rev", scene: `<path class="blink" d="M20 176 l-18 -6 l7 6 l-12 5 l23 2 z" fill="#ff7a59" stroke="${INK}" stroke-width="1.5"/>
+        <g transform="translate(214 58)"><circle r="24" fill="#fff" stroke="${INK}" stroke-width="3"/><path d="M-17 10 A20 20 0 1 1 17 10" stroke="#ddd" stroke-width="5" fill="none"/>
+        <path d="M8 -16 A18 18 0 0 1 17 10" stroke="#ef4b5b" stroke-width="5" fill="none"/><path class="needle" d="M0 0 L16 -6" stroke="${INK}" stroke-width="3" stroke-linecap="round"/><circle r="3" fill="${INK}"/></g>
+        ${t(214, 24, "9000 U/min", { s: 11, w: 800, c: "#ef4b5b" })}${t(96, 46, "BRAP! BRAP!", { s: 22, c: "#ff7a59", cls: "wob shout" })}` },
+      calm: { sfx: "soft", scene: `${t(150, 112, "brumm…", { s: 11, w: 700, c: "#6b5a78" })}<g class="float">${t(100, 66, "♪", { s: 14, c: "#2fb67c" })}</g>` }
+    }
+  },
+  { // Level 5: Rolltreppe
+    label: "Bild: Eine Rolltreppe von vorne. Links ist die Gehspur, rechts die Stehspur. Elpida steht unten links.",
+    bg: (() => {
+      let steps = "";
+      for (let i = 1; i <= 14; i++) {
+        const y = 24 + 196 * Math.pow(i / 14, 1.25), k = (y - 24) / 196;
+        steps += `<path d="M${(148 - k * 78).toFixed(1)} ${y.toFixed(1)}H${(212 + k * 78).toFixed(1)}" stroke="#8f8fa3" stroke-width="2"/>`;
+      }
+      return `<rect width="360" height="220" fill="#e9e1ff"/><g stroke="#d9cff7" stroke-width="2">${[30, 60, 90, 270, 300, 330].map(x => `<path d="M${x} 0V220"/>`).join("")}</g>
+        <rect x="130" y="2" width="100" height="16" rx="4" fill="#2b6cd6"/>${t(180, 14, "↑ Gleis 3", { s: 11, c: "#fff" })}
+        <path d="M70 220 L148 24 H212 L290 220 Z" fill="#b9b9c9" stroke="${INK}" stroke-width="3"/>${steps}
+        <path d="M180 220V26" stroke="#fff" stroke-width="2" stroke-dasharray="6 6" opacity=".8"/>
+        <path d="M56 220 L139 22M304 220 L221 22" stroke="${INK}" stroke-width="8" stroke-linecap="round"/>
+        ${t(163, 44, "GEHEN", { s: 8, c: "#fff" })}${t(197, 44, "STEHEN", { s: 8, c: "#fff" })}`;
+    })(),
+    guy: { x: 180, y: 150, s: .75 }, elp: { x: 122, y: 218, s: .8 },
+    poses: {
+      left: { guyAt: { x: 140, y: 150 }, hand: PHONE, sfx: "tick", scene: `${t(70, 74, "scroll…", { s: 13, c: "#6b5a78" })}${t(76, 92, "scroll…", { s: 13, c: "#6b5a78" })}${t(52, 140, "⏳", { s: 20 })}` },
+      block: { guyAt: { x: 180, y: 150 }, body: SUITCASE_WIDE, sfx: "boom", scene: `${t(282, 74, "Koffer-Burg!", { s: 15, c: "#ef4b5b", cls: "wob shout" })}` },
+      right: { guyAt: { x: 222, y: 150 }, sfx: "soft", scene: `<path class="blink" d="M150 196V108" stroke="#2fb67c" stroke-width="6" stroke-linecap="round"/>
+        <path d="M150 104l-11 14M150 104l11 14" stroke="#2fb67c" stroke-width="6" stroke-linecap="round"/>${t(60, 100, "frei!", { s: 17, c: "#2fb67c", cls: "wob shout" })}` }
+    }
+  },
+];
+
+const INTRO_SCENE = {
+  label: "Bild: Ein cooler Typ mit Sonnenbrille und lauter Musikbox auf der Straße.",
+  bg: STREET, guy: { x: 110, y: 200 }, elp: { x: 440, y: 200 },
+  idle: { hand: BOOMBOX, scene: `${t(178, 66, "BUMM! BUMM!", { s: 22, c: "#ef4b5b", cls: "wob shout" })}<g class="float">${t(52, 84, "♫", { s: 24, c: "#8a5cf6" })}${t(168, 108, "♪", { s: 20, c: "#2fb67c" })}</g>` }
+};
+const WIN_SCENE = {
+  label: "Bild: Der Typ ist frei, das Glas ist offen, überall Luftballons.",
+  bg: sky() + sun(40, 34) + `<path d="M70 8 Q215 50 360 8" stroke="${INK}" stroke-width="2" fill="none"/>` +
+    [[90, 16, "#ff7a59"], [125, 25, "#ffc93c"], [160, 31, "#8a5cf6"], [195, 33, "#2fb67c"], [230, 32, "#ff6fb5"], [265, 27, "#4cc3ff"], [300, 20, "#ff7a59"], [335, 12, "#ffc93c"]]
+      .map(([x, y, c]) => `<path d="M${x - 9} ${y} L${x + 9} ${y} L${x} ${y + 16} Z" fill="${c}" stroke="${INK}" stroke-width="1.5"/>`).join("") +
+    [[30, 110, "#ef4b5b"], [58, 92, "#ffc93c"], [292, 100, "#8a5cf6"], [322, 84, "#2fb67c"]]
+      .map(([x, y, c], i) => `<g class="float" style="animation-delay:${i * .3}s"><path d="M${x} ${y + 17} q-5 20 3 40 q-6 15 0 30" stroke="${INK}" stroke-width="1.5" fill="none"/><ellipse cx="${x}" cy="${y}" rx="13" ry="16" fill="${c}" stroke="${INK}" stroke-width="2"/><path d="M${x - 3} ${y + 16} h6 l-3 4z" fill="${c}" stroke="${INK}" stroke-width="1.5"/><ellipse cx="${x - 5}" cy="${y - 6}" rx="3" ry="5" fill="#fff" opacity=".5"/></g>`).join("") +
+    grass(185) + `<g fill="#ff6fb5"><circle cx="30" cy="196" r="4"/><circle cx="90" cy="206" r="4"/><circle cx="250" cy="200" r="4"/></g><g fill="#ffc93c"><circle cx="60" cy="210" r="4"/><circle cx="190" cy="208" r="4"/></g>`,
+  guy: { x: 130, y: 200 }, elp: { x: 218, y: 200 },
+  idle: { scene: sceneJar(310, 200, .45, "none") + `<g transform="translate(334 198) rotate(-20)"><rect x="-17" y="-6" width="34" height="9" rx="3" fill="#ffc93c" stroke="${INK}" stroke-width="2"/></g>` +
+    t(180, 76, "FREI!", { s: 32, c: "#2fb67c", cls: "wob shout" }) }
+};
+const GAMEOVER_SCENES = {
+  exile: {
+    label: "Bild: Der Typ zieht mit Koffer Richtung Grenze, Elpida winkt.",
+    bg: sky("#d6e4ff") + cloud(150, 30) + grass(176) + `<path d="M40 200V112" stroke="#8a5a3c" stroke-width="5"/><path d="M78 96H18L6 108L18 120H78Z" fill="#fff" stroke="${INK}" stroke-width="2.5"/>${t(44, 112, "IRGENDWO", { s: 10 })}`,
+    guy: { x: 150, y: 200, flip: true }, elp: { x: 296, y: 200 },
+    idle: { hand: SUITCASE_SMALL, scene: `<g class="popin" transform="rotate(-10 200 56)"><rect x="112" y="36" width="176" height="34" rx="6" fill="rgba(255,255,255,.7)" stroke="#ef4b5b" stroke-width="4"/>${t(200, 60, "AUSGEBÜRGERT", { s: 19, c: "#ef4b5b" })}</g>` }
+  },
+  social: {
+    label: "Bild: Der Typ schiebt eine lange Reihe Einkaufswagen vor einem Supermarkt.",
+    bg: sky() + `<rect x="150" y="60" width="210" height="110" fill="#ffe0b0" stroke="${INK}" stroke-width="3"/><rect x="150" y="44" width="210" height="22" fill="#2fb67c" stroke="${INK}" stroke-width="3"/>${t(255, 60, "SUPERMARKT", { s: 13, c: "#fff" })}
+      <rect x="230" y="110" width="50" height="60" fill="#bfe8ff" stroke="${INK}" stroke-width="2.5"/>` + `<rect y="170" width="360" height="50" fill="#a9a9b8"/><path d="M40 190h40M140 190h40M240 190h40" stroke="#fff" stroke-width="3"/>`,
+    guy: { x: 110, y: 200 }, elp: { x: 330, y: 200 },
+    idle: { scene: [138, 158, 178, 198, 218, 238].map(cart).join("") + t(130, 34, "Tag 1 von 365", { s: 18, c: "#8a5cf6", cls: "wob shout" }) }
+  }
+};
+
+/* ================== UI ================== */
+(function () {
+  const $ = id => document.getElementById(id);
+  const app = $("app"), card = $("card"), scene = $("scene"),
+        bgL = $("bgL"), fgL = $("fgL"), propsL = $("propsL"), elpFgL = $("elpFgL"), fxL = $("fxL"),
+        guy = $("guy"), elp = $("elp"), sayWho = $("sayWho"), sayText = $("sayText"), caption = $("caption"),
+        heartsEl = $("hearts"), levelPill = $("levelPill"), soundBtn = $("soundBtn"),
+        jar = $("jar"), jarScale = $("jarScale"), jarLabel = $("jarLabel");
+
+  guy.innerHTML = guyMarkup();
+  elp.innerHTML = elpMarkup();
+  $("jarGuy").innerHTML = guyMarkup();
+  const G = { head: guy.querySelector(".g-headProps"), hand: guy.querySelector(".g-handProps"), body: guy.querySelector(".g-bodyProps"), mouth: guy.querySelector(".g-mouth") };
+  const E = { mouth: elp.querySelector(".e-mouth"), l: elp.querySelector(".e-browL"), r: elp.querySelector(".e-browR") };
+
+  const game = createGame();
+  const S = game.state;
+
+  /* ---------- Sound (Web Audio, abschaltbar) ---------- */
+  const Sound = {
+    on: true, ctx: null,
+    ensure() {
+      if (!this.on) return null;
+      if (!this.ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        try { this.ctx = new AC(); } catch (e) { return null; }
+      }
+      if (this.ctx.state === "suspended") this.ctx.resume();
+      return this.ctx;
+    },
+    tone(freq, dur, type, delay, vol, slideTo) {
+      const c = this.ensure(); if (!c) return;
+      const t0 = c.currentTime + (delay || 0);
+      const o = c.createOscillator(), g = c.createGain();
+      o.type = type || "sine";
+      o.frequency.setValueAtTime(freq, t0);
+      if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(vol || 0.18, t0 + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(g).connect(c.destination);
+      o.start(t0); o.stop(t0 + dur + 0.05);
+    },
+    noise(dur, vol, delay) {
+      const c = this.ensure(); if (!c) return;
+      const len = Math.floor(c.sampleRate * dur);
+      const buf = c.createBuffer(1, len, c.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+      const src = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+      src.buffer = buf; f.type = "highpass"; f.frequency.value = 900; g.gain.value = vol || 0.6;
+      src.connect(f).connect(g).connect(c.destination);
+      src.start(c.currentTime + (delay || 0));
+    },
+    click() { this.tone(660, 0.06, "square", 0, 0.06); },
+    correct() { [523, 659, 784, 1046].forEach((f, i) => this.tone(f, 0.18, "triangle", i * 0.08, 0.16)); },
+    slap() { this.noise(0.18, 0.8); this.tone(220, 0.25, "sawtooth", 0.02, 0.1, 90); },
+    whoosh() { this.noise(0.3, 0.2); },
+    boom() { for (let i = 0; i < 3; i++) this.tone(95, 0.25, "sine", i * 0.3, 0.5, 40); },
+    tss() { for (let i = 0; i < 5; i++) this.noise(0.05, 0.3, i * 0.15); },
+    vroom() { this.tone(70, 0.8, "sawtooth", 0, 0.12, 200); this.tone(200, 0.5, "sawtooth", 0.8, 0.1, 60); },
+    rev() { for (let i = 0; i < 3; i++) this.tone(80, 0.25, "sawtooth", i * 0.3, 0.12, 280); },
+    horn() { [0, 0.45].forEach(d => { this.tone(440, 0.35, "square", d, 0.07); this.tone(554, 0.35, "square", d, 0.05); }); },
+    soft() { this.tone(880, 0.2, "sine", 0, 0.07); this.tone(1175, 0.3, "sine", 0.15, 0.06); },
+    tick() { [0, 0.35, 0.7].forEach(d => this.tone(1300, 0.04, "square", d, 0.05)); },
+    blabla() { for (let i = 0; i < 7; i++) this.tone(260 + Math.random() * 320, 0.08, "square", i * 0.1, 0.04); },
+    zap() { this.tone(200, 0.5, "sawtooth", 0, 0.08, 1800); },
+    pling() { this.tone(1568, 0.15, "triangle", 0, 0.15); this.tone(2093, 0.35, "triangle", 0.1, 0.13); },
+    plop() { this.tone(320, 0.14, "sine", 0, 0.3, 110); },
+    gameover() { [392, 370, 349].forEach((f, i) => this.tone(f, 0.35, "sawtooth", i * 0.32, 0.09)); this.tone(330, 0.9, "sawtooth", 0.96, 0.09, 260); },
+    win() {
+      [523, 659, 784, 659, 784, 1046].forEach((f, i) => this.tone(f, 0.22, "triangle", i * 0.12, 0.17));
+      this.tone(1046, 0.7, "sine", 0.75, 0.15);
+      this.tone(1400, 0.5, "sine", 0.15, 0.08, 2200);
+    }
+  };
+  soundBtn.addEventListener("click", () => {
+    Sound.on = !Sound.on;
+    soundBtn.textContent = Sound.on ? "🔊" : "🔇";
+    soundBtn.setAttribute("aria-label", Sound.on ? "Sound ausschalten" : "Sound einschalten");
+    if (Sound.on) Sound.click();
+  });
+
+  /* ---------- Helfer ---------- */
+  let timers = [];
+  const later = (fn, ms) => timers.push(setTimeout(fn, ms));
+  const clearTimers = () => { timers.forEach(clearTimeout); timers = []; };
+  const esc = s => { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; };
+  const restartAnim = (el, cls) => { el.classList.remove(cls); void el.getBoundingClientRect(); el.classList.add(cls); };
+
+  function say(text, who) {
+    sayWho.textContent = who || "Elpida";
+    sayText.textContent = text;
+    restartAnim(caption, "pop");
+  }
+
+  let guyPos = { x: 0, y: 0, s: 1 }, guyBase = guyPos, elpBase = { x: 0, y: 0, s: .72 };
+  function place(el, p, mode) {
+    el.classList.remove("instant", "fast", "slow");
+    if (mode) el.classList.add(mode);
+    const s = p.s || 1;
+    el.style.transform = `translate(${p.x}px, ${p.y}px) scale(${p.flip ? -s : s}, ${s})`;
+    if (mode === "instant") { el.getBoundingClientRect(); el.classList.remove("instant"); }
+  }
+
+  function elpMood(m) {
+    const f = E_FACE[m] || E_FACE.happy;
+    E.mouth.setAttribute("d", f.mouth); E.l.setAttribute("d", f.l); E.r.setAttribute("d", f.r);
+  }
+
+  function loadScene(cfg) {
+    clearTimers();
+    bgL.innerHTML = cfg.bg;
+    fgL.innerHTML = `<g>${cfg.fg || ""}</g>`;
+    elpFgL.innerHTML = cfg.elpFg || "";
+    fxL.innerHTML = "";
+    fgL.style.transition = "none"; fgL.style.transform = ""; fgL.getBoundingClientRect(); fgL.style.transition = "";
+    scene.setAttribute("class", "");
+    scene.setAttribute("aria-label", cfg.label || "Szene");
+    guy.setAttribute("class", "actor");
+    G.mouth.setAttribute("d", GUY_MOUTH.smirk);
+    if (cfg.guy) {
+      guy.style.display = "";
+      guyBase = Object.assign({ s: 1 }, cfg.guy);
+      guyPos = Object.assign({}, guyBase);
+      place(guy, guyPos, "instant");
+    } else guy.style.display = "none";
+    elp.setAttribute("class", "actor");
+    elpMood("happy");
+    elpBase = Object.assign({ s: .72 }, cfg.elp);
+    place(elp, elpBase, "instant");
+    setProps(cfg.idle, true);
+  }
+
+  function setProps(p, silent) {
+    p = p || {};
+    propsL.innerHTML = p.scene || "";
+    G.head.innerHTML = p.head || "";
+    G.hand.innerHTML = p.hand || "";
+    G.body.innerHTML = p.body || "";
+    scene.classList.toggle("rumble", !!p.rumble);
+    if (p.shift != null) fgL.style.transform = `translateX(${p.shift}px)`;
+    if (p.shift != null || p.guyAt) {
+      guyPos = Object.assign({}, guyPos, p.guyAt || { x: guyBase.x + p.shift });
+      place(guy, guyPos, "slow");
+    }
+    if (p.sfx && !silent) Sound[p.sfx]();
+  }
+
+  function klatsch(x, y) {
+    let pts = "";
+    for (let i = 0; i < 16; i++) {
+      const r = i % 2 ? 10 : 22, a = i * Math.PI / 8;
+      pts += (x + Math.cos(a) * r).toFixed(1) + "," + (y + Math.sin(a) * r).toFixed(1) + " ";
+    }
+    return `<g class="klatsch"><polygon points="${pts}" fill="#ffc93c" stroke="${INK}" stroke-width="2.5"/>${t(x, y - 26, "KLATSCH!", { s: 20, c: "#ef4b5b", cls: "shout" })}</g>`;
+  }
+  const heartsFx = (x, y) => [0, 1, 2].map(i =>
+    `<text class="heartUp" style="animation-delay:${i * .18}s" x="${x - 14 + i * 14}" y="${y}" font-size="16" fill="#ef4b5b" text-anchor="middle">♥</text>`).join("");
+
+  // Elpida rennt hin und klatscht dem Typen eine
+  function slapSequence(onImpact, onDone) {
+    const s = guyPos.s || 1;
+    const cx = guyPos.x + 8 * s, cy = guyPos.y - 88 * s;
+    elpMood("stern");
+    Sound.whoosh();
+    place(elp, { x: cx + 30, y: cy + 66, s: .72 }, "fast");
+    later(() => elp.classList.add("slap"), 320);
+    later(() => {
+      guy.classList.add("hit", "noshades", "printed");
+      G.mouth.setAttribute("d", GUY_MOUTH.shock);
+      fxL.insertAdjacentHTML("beforeend", klatsch(cx, cy));
+      Sound.slap();
+      restartAnim(app, "shake");
+      if (navigator.vibrate) { try { navigator.vibrate(120); } catch (e) {} }
+      onImpact();
+    }, 640);
+    later(() => { elp.classList.remove("slap"); place(elp, elpBase); }, 1250);
+    later(onDone, 1500);
+  }
+
+  function renderHearts(breakIndex) {
+    heartsEl.innerHTML = "";
+    for (let i = 0; i < MAX_LIVES; i++) {
+      const h = document.createElement("span");
+      h.className = "heart" + (i >= S.lives ? " lost" : "") + (i === breakIndex ? " breaking" : "");
+      h.textContent = "♥";
+      heartsEl.appendChild(h);
+    }
+    heartsEl.setAttribute("aria-label", S.lives + " von " + MAX_LIVES + " Leben");
+  }
+
+  // Das Glas wird mit jedem Fehler kleiner
+  const JAR_SCALE = [1, .84, .7, .56], JAR_PCT = [100, 75, 50, 25];
+  function renderJar(bump) {
+    const lost = Math.max(0, Math.min(MAX_LIVES, MAX_LIVES - S.lives));
+    jarScale.style.transform = `scale(${JAR_SCALE[lost]})`;
+    jar.setAttribute("class", "lost-" + lost);
+    jarLabel.innerHTML = (lost >= 2 ? "Glas – eng!" : "Glas") + "<b>" + JAR_PCT[lost] + "%</b>";
+    if (bump) restartAnim(jarLabel, "bump");
+  }
+
+  function renderPill(text, boss) {
+    levelPill.textContent = text;
+    levelPill.classList.toggle("boss", !!boss);
+  }
+
+  /* ---------- Konfetti ---------- */
+  const canvas = $("confetti"), ctx2d = canvas.getContext("2d");
+  const COLORS = ["#ff7a59", "#8a5cf6", "#2fb67c", "#ffc93c", "#4cc3ff", "#ff6fb5"];
+  let confettiRun = 0;
+  function confetti() {
+    const run = ++confettiRun;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const W = window.innerWidth, H = window.innerHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const parts = [];
+    for (let i = 0; i < 180; i++) parts.push({
+      x: W / 2 + (Math.random() - .5) * 80, y: H * .3,
+      vx: (Math.random() - .5) * 14, vy: -Math.random() * 15 - 4,
+      w: 6 + Math.random() * 7, h: 4 + Math.random() * 5,
+      r: Math.random() * 6, vr: (Math.random() - .5) * .4, c: COLORS[i % COLORS.length]
+    });
+    const start = performance.now();
+    (function frame(now) {
+      if (run !== confettiRun) return;
+      const el = now - start;
+      ctx2d.clearRect(0, 0, W, H);
+      for (const p of parts) {
+        p.vy += 0.32; p.vx *= 0.99; p.x += p.vx; p.y += p.vy; p.r += p.vr;
+        ctx2d.save(); ctx2d.translate(p.x, p.y); ctx2d.rotate(p.r);
+        ctx2d.fillStyle = p.c; ctx2d.globalAlpha = Math.max(0, 1 - el / 5000);
+        ctx2d.fillRect(-p.w / 2, -p.h / 2, p.w, p.h * Math.abs(Math.cos(p.r * 2)) + 1);
+        ctx2d.restore();
+      }
+      if (el < 5000) requestAnimationFrame(frame); else ctx2d.clearRect(0, 0, W, H);
+    })(start);
+  }
+  function stopConfetti() { confettiRun++; ctx2d.clearRect(0, 0, canvas.width, canvas.height); }
+
+  /* ---------- Bildschirme ---------- */
+  // Startkarte: kommt nach dem Intro (oder nach "Überspringen")
+  function showStart() {
+    clearTimers();
+    loadScene(Object.assign({}, INTRO_SCENE, { elp: { x: 262, y: 200 }, idle: { scene: sceneJar(170, 200, .55, "closed") } }));
+    place(guy, { x: 170, y: 194, s: .22 }, "instant");
+    renderPill("Start");
+    renderJar();
+    say("Willkommen im Jar! Hier drin ist alles eine Simulation. Schaffe 4 Level, dann darfst du raus.", "Erzähler");
+    card.innerHTML =
+      '<h1>Elpida sammelt Leute im <span class="jar-word">Jar</span></h1>' +
+      '<p>Wer sich danebenbenimmt, wird von Elpida geschrumpft und ins Glas gepackt. Drinnen läuft eine Simulation, in der man an seiner Charakterentwicklung arbeiten kann.</p>' +
+      '<ul class="intro">' +
+      '<li><b>4 Level</b> aus dem echten Alltag, je 3 Antworten.</li>' +
+      '<li>Du hast <b>3 Herzen</b>. Falsche Antwort = Herz weg + Elpida klatscht dir eine.</li>' +
+      '<li>Mit jedem Fehler wird <b>dein Glas kleiner</b>.</li>' +
+      '<li>Schaffst du alle Level, darfst du raus!</li>' +
+      '</ul>' +
+      '<button class="big-btn" id="startBtn">Los geht\'s!</button>' +
+      '<p></p><button class="ghost-btn" id="replayIntroBtn">🎬 Intro nochmal ansehen</button>';
+    $("startBtn").addEventListener("click", () => { Sound.click(); startGame(); });
+    $("replayIntroBtn").addEventListener("click", () => { Sound.click(); playIntro(); });
+  }
+
+  // Intro: Elpida schrumpft den coolen Typen und packt ihn ins Glas
+  function playIntro() {
+    stopConfetti();
+    jar.classList.remove("open");
+    loadScene(INTRO_SCENE);
+    renderPill("Intro");
+    card.innerHTML = '<p class="center"><b>🎬 Wie alles begann…</b></p><button class="ghost-btn" id="skipBtn">Überspringen ⏭</button>';
+    $("skipBtn").addEventListener("click", () => { Sound.click(); showStart(); });
+
+    say("Ein cooler Typ. Laute Musik. Sonnenbrille. Findet sich sehr cool.", "Erzähler");
+    Sound.boom(); later(() => Sound.boom(), 1000);
+    later(() => { Sound.whoosh(); place(elp, { x: 262, y: 200, s: .72 }); }, 2000);
+    later(() => { elpMood("stern"); say("Moment mal."); }, 2600);
+    later(() => {
+      elp.classList.add("zap"); Sound.zap();
+      fxL.innerHTML = `<path class="zapbeam" d="M241 118 L205 128 L190 114 L162 138 L148 124 L118 150" stroke="#ffc93c" stroke-width="5" fill="none" stroke-linejoin="round"/>` +
+        t(100, 120, "✨", { s: 18 }) + t(132, 168, "✨", { s: 14 });
+    }, 3700);
+    later(() => {
+      setProps({}, true); Sound.pling();
+      place(guy, { x: 110, y: 200, s: .22 }, "slow");
+      fxL.innerHTML = t(110, 150, "SCHRUMPF!", { s: 20, c: "#8a5cf6", cls: "wob shout" });
+    }, 4300);
+    later(() => {
+      elp.classList.remove("zap"); fxL.innerHTML = "";
+      setProps({ scene: `<g class="popin">${sceneJar(170, 200, .55, "open")}</g>` }, true);
+      say("Ab ins Glas mit dir. Zu deinem eigenen Besten.");
+    }, 5500);
+    later(() => place(guy, { x: 170, y: 92, s: .22 }, "slow"), 6200);
+    later(() => place(guy, { x: 170, y: 194, s: .22 }, "slow"), 7300);
+    later(() => { const lid = propsL.querySelector(".slid"); if (lid) lid.classList.add("closed"); Sound.plop(); renderJar(true); }, 8400);
+    later(showStart, 9300);
+  }
+
+  function startGame() {
+    stopConfetti();
+    game.restart();
+    showQuestion();
+  }
+
+  function showQuestion() {
+    const lv = game.currentLevel();
+    loadScene(SCN[S.level]);
+    renderHearts(); renderJar();
+    renderPill("Level " + (S.level + 1) + "/" + LEVELS.length);
+    say(lv.elpida);
+    const letters = ["A", "B", "C"];
+    card.innerHTML =
+      '<p class="question">' + esc(lv.question) + '</p>' +
+      '<div class="answers">' +
+      S.answers.map((a, i) =>
+        '<button class="answer" data-i="' + i + '"><span class="letter">' + letters[i] + '</span><span>' + esc(a.text) + '</span></button>'
+      ).join("") +
+      '</div><div id="fb"></div>';
+    card.querySelectorAll(".answer").forEach(btn => btn.addEventListener("click", () => onAnswer(Number(btn.dataset.i))));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function onAnswer(i) {
+    const livesBefore = S.lives;
+    const r = game.answer(i);
+    if (!r) return;
+    const btns = card.querySelectorAll(".answer");
+    btns.forEach((b, j) => { b.disabled = true; if (j !== i) b.classList.add("gone"); });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+
+    setProps(SCN[S.level].poses[r.pose]); // Szene zeigt, was du gewählt hast
+
+    if (r.correct) {
+      later(() => {
+        Sound.correct();
+        btns[i].classList.add("right");
+        restartAnim(elp, "hop"); restartAnim(guy, "happy");
+        G.mouth.setAttribute("d", GUY_MOUTH.happy);
+        fxL.insertAdjacentHTML("beforeend", heartsFx(elpBase.x, elpBase.y - 125 * elpBase.s));
+        say(r.elpida);
+      }, 800);
+      later(() => showFeedback(r), 1400);
+    } else {
+      later(() => { btns[i].classList.add("wrong"); elpMood("stern"); say("Moment mal…"); }, 700);
+      later(() => slapSequence(
+        () => { renderHearts(livesBefore - 1); renderJar(true); },
+        () => { say(r.elpida); showFeedback(r); }
+      ), 1300);
+    }
+  }
+
+  function showFeedback(r) {
+    const label = r.outOfLives ? "Oh nein…" : r.finished ? "Zum Finale!" : r.correct ? "Nächstes Level" : "Nochmal versuchen";
+    $("fb").innerHTML =
+      '<div class="feedback ' + (r.correct ? "ok" : "bad") + '" role="status">' +
+      '<div class="head">' + esc(r.headline) + '</div>' +
+      '<p>' + esc(r.comment) + '</p>' +
+      '<button class="big-btn ' + (r.correct ? "green" : "") + '" id="nextBtn">' + label + '</button></div>';
+    $("nextBtn").addEventListener("click", onNext);
+  }
+
+  function onNext() {
+    Sound.click();
+    const phase = game.next();
+    if (phase === "question") showQuestion();
+    else if (phase === "gameover") showGameOver();
+    else if (phase === "won") showWin();
+  }
+
+  function showGameOver() {
+    const go = S.gameOver;
+    loadScene(GAMEOVER_SCENES[go.id]);
+    G.mouth.setAttribute("d", GUY_MOUTH.sad);
+    renderPill("Game Over");
+    renderJar();
+    Sound.gameover();
+    say(go.id === "exile" ? "Tschüss! Schreib mal. Oder lieber nicht." : "Weiter so. Noch 364 Tage.");
+    card.innerHTML =
+      '<h2>' + esc(go.title) + '</h2>' +
+      '<p class="center">' + esc(go.text) + '</p>' +
+      '<button class="big-btn purple" id="againBtn">Neustart</button>';
+    $("againBtn").addEventListener("click", () => { Sound.click(); startGame(); });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function showWin() {
+    loadScene(WIN_SCENE);
+    guy.classList.add("hoploop");
+    G.mouth.setAttribute("d", GUY_MOUTH.happy);
+    restartAnim(elp, "hop");
+    renderPill("Geschafft!");
+    jar.classList.add("open");
+    Sound.win();
+    confetti();
+    say("Du bist gewachsen. Innerlich. Äußerlich jetzt auch wieder.");
+    card.innerHTML =
+      '<h2>🎉 Das Jar ist offen!</h2>' +
+      '<p class="center"><b>Du hast deine Charakterentwicklung abgeschlossen, du darfst raus!</b></p>' +
+      '<p class="stat">Übrige Herzen: ' + S.lives + ' von ' + MAX_LIVES + '</p>' +
+      '<button class="big-btn green" id="replayBtn">Nochmal spielen</button>';
+    $("replayBtn").addEventListener("click", () => { Sound.click(); startGame(); });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  renderHearts();
+  renderJar();
+  playIntro(); // Intro läuft beim Öffnen automatisch
+})();
+</script>
+</body>
+</html>
